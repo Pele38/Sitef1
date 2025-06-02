@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>F1 Manager - Modifier les Notes</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    .active-team {
+      background-color: #1F2937 !important;
+      font-weight: bold;
+      border-left: 4px solid white;
+    }
+  </style>
+</head>
+<body class="text-black">
+  <div class="flex h-screen">
+    <!-- Sidebar Menu -->
+    <aside class="w-64 bg-white p-4 space-y-2 overflow-y-auto">
+      <div class="flex items-center gap-2 mb-4">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/33/F1.svg/1280px-F1.svg.png" alt="F1 Logo" class="h-6">
+        <h2 class="text-xl font-bold">Écuries</h2>
+      </div>
+      <ul id="teamList" class="space-y-2"></ul>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 p-6 overflow-y-auto bg-gray-200 text-black">
+      <div id="teamHeader"></div>
+      <h1 id="teamTitle" class="text-3xl font-bold mb-6">Sélectionnez une écurie</h1>
+      <div id="teamStats" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+    </main>
+  </div>
+
+  <script>
+    const teams = [
+      { name: "EQUIPE DE SIMU", color: "#9CA3AF", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/3/33/F1.svg/1280px-F1.svg.png" },
+      { name: "FERRARI", color: "#B80000", logo: "https://upload.wikimedia.org/wikipedia/fr/thumb/c/c0/Scuderia_Ferrari_Logo.svg/1517px-Scuderia_Ferrari_Logo.svg.png" },
+      { name: "VISA CASHAPP RB", color: "#0077FF", logo: "https://www.financialafrik.com/wp-content/uploads/2024/01/Visa-cashAPP.png" },
+      { name: "MCLAREN", color: "#FF8700", logo: "https://brandlogos.net/wp-content/uploads/2022/04/mclaren_formula_1_team-logo-brandlogos.net_.png" },
+      { name: "MERCEDES", color: "#00D2BE", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fb/Mercedes_AMG_Petronas_F1_Logo.svg/2560px-Mercedes_AMG_Petronas_F1_Logo.svg.png" },
+      { name: "AUDI", color: "#00FF00", logo: "https://e7.pngegg.com/pngimages/375/943/png-clipart-audi-car-logo-most-dope-logo-text-trademark.png" },
+      { name: "RED BULL RACING", color: "#1E1E9C", logo: "https://upload.wikimedia.org/wikipedia/fr/thumb/3/36/Red_Bull_Racing_2022.png/250px-Red_Bull_Racing_2022.png" },
+      { name: "ALPINE", color: "#FF1493", logo: "https://upload.wikimedia.org/wikipedia/fr/b/b7/Alpine_F1_Team_2021_Logo.svg" },
+      { name: "WILLIAMS", color: "#68A4FF", logo: "https://upload.wikimedia.org/wikipedia/commons/f/f9/Logo_Williams_F1.png" },
+      { name: "HAAS", color: "#E0E0E0", logo: "https://upload.wikimedia.org/wikipedia/commons/5/54/Haas_F1_Team_Logo.svg" },
+      { name: "ASTON MARTIN", color: "#005F56", logo: "https://upload.wikimedia.org/wikipedia/fr/thumb/c/c2/Logo_Aston_Martin.svg/1280px-Logo_Aston_Martin.svg.png" },
+    ];
+
+    const sections = {
+      "CHASSIS": ["Drag reduction", "Engine cooling", "Airflow middle", "DRS Delta"],
+      "FRONT WING": ["Airflow front", "Airflow sensitivity", "Tyre preservation", "Low speed downforce", "Medium speed downforce", "High speed downforce"],
+      "REAR WING": ["Airflow sensitivity", "DRS Delta", "Drag reduction", "Low speed downforce", "Medium speed downforce", "High speed downforce"],
+      "SIDEPODS": ["Airflow front", "Drag reduction", "Engine cooling", "Airflow middle"],
+      "UNDERFLOOR": ["Airflow sensitivity", "Drag reduction", "Low speed downforce", "Medium speed downforce", "High speed downforce"],
+      "SUSPENSION": ["Airflow front", "Tyre preservation", "Drag reduction", "Low speed downforce", "Medium speed downforce", "High speed downforce"]
+    };
+
+    const units = {
+      "%": ["Drag reduction", "Engine cooling", "Airflow middle", "Airflow front", "Airflow sensitivity", "Tyre preservation", "DRS Delta"],
+      "kN": ["Low speed downforce", "Medium speed downforce", "High speed downforce"]
+    };
+
+    const getUnit = (label) => {
+      for (const unit in units) {
+        if (units[unit].includes(label)) return unit;
+      }
+      return "";
+    };
+
+    const saveTeamData = (teamName, data) => {
+      localStorage.setItem(`teamData-${teamName}`, JSON.stringify(data));
+    };
+
+    const loadTeamData = (teamName) => {
+      const data = localStorage.getItem(`teamData-${teamName}`);
+      return data ? JSON.parse(data) : {};
+    };
+
+    const teamList = document.getElementById('teamList');
+    const teamStats = document.getElementById('teamStats');
+    const teamTitle = document.getElementById('teamTitle');
+    const teamHeader = document.getElementById('teamHeader');
+
+    let activeButton = null;
+
+    teams.forEach((team, index) => {
+      const li = document.createElement('li');
+      const button = document.createElement('button');
+      button.textContent = team.name;
+      button.className = "w-full text-left px-4 py-2 rounded hover:bg-gray-200 transition-colors duration-150";
+      button.style.backgroundColor = team.color;
+      button.style.color = 'white';
+      button.addEventListener('click', () => {
+        if (activeButton) activeButton.classList.remove('active-team');
+        button.classList.add('active-team');
+        activeButton = button;
+        showTeam(index);
+      });
+      li.appendChild(button);
+      teamList.appendChild(li);
+    });
+
+    function showTeam(index) {
+      const team = teams[index];
+      teamTitle.textContent = team.name;
+      teamTitle.style.color = team.color;
+      teamStats.innerHTML = '';
+      teamHeader.innerHTML = '';
+
+      const card = document.createElement("div");
+      card.className = "bg-white text-black rounded-xl shadow p-4 mb-6 flex items-center gap-4";
+
+      const logo = document.createElement("img");
+      logo.src = team.logo;
+      logo.alt = "Logo " + team.name;
+      logo.className = "h-10";
+
+      const name = document.createElement("h2");
+      name.className = "text-2xl font-bold";
+      name.textContent = team.name;
+
+      card.appendChild(logo);
+      card.appendChild(name);
+      teamHeader.appendChild(card);
+
+      // --- Bouton Usine / R&D ---
+      const rdButton = document.createElement("button");
+      rdButton.textContent = "Usine / R&D";
+      rdButton.className = "mb-6 px-4 py-2 rounded text-white font-semibold";
+      rdButton.style.backgroundColor = team.color;
+      rdButton.addEventListener("click", () => {
+        localStorage.setItem('activeTeam', team.name);
+        window.location.href = 'conception.html';  // <-- modifié ici
+      });
+      teamHeader.appendChild(rdButton);
+      // ---------------------------
+
+      const savedData = loadTeamData(team.name);
+
+      const saveButton = document.createElement("button");
+      saveButton.textContent = "Sauvegarder les modifications";
+      saveButton.className = "mb-4 px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded";
+      saveButton.addEventListener("click", () => {
+        const dataToSave = {};
+        const allInputs = teamStats.querySelectorAll("input");
+        allInputs.forEach(input => {
+          const label = input.closest("div").previousSibling.textContent;
+          const section = input.closest("div").closest("div").querySelector("h2").textContent;
+          const statKey = `${section} - ${label}`;
+          dataToSave[statKey] = input.value;
+        });
+        saveTeamData(team.name, dataToSave);
+        alert("Données sauvegardées !");
+      });
+      const wrapper = document.createElement("div");
+      wrapper.className = "col-span-full";
+      wrapper.appendChild(saveButton);
+      teamStats.appendChild(wrapper);
+
+      Object.keys(sections).forEach(section => {
+        const card = document.createElement("div");
+        card.className = "bg-gray-800 p-4 rounded-xl shadow-lg text-white";
+
+        const title = document.createElement("h2");
+        title.className = "text-lg font-semibold mb-2 text-yellow-300";
+        title.textContent = section;
+        card.appendChild(title);
+
+        sections[section].forEach(stat => {
+          const unit = getUnit(stat);
+          const statKey = `${section} - ${stat}`;
+
+          const label = document.createElement("label");
+          label.className = "block text-sm mt-2 text-white";
+          label.textContent = stat;
+
+          const container = document.createElement("div");
+          container.className = "flex items-center gap-2";
+
+          const input = document.createElement("input");
+          input.type = "number";
+          input.className = "flex-1 px-2 py-1 rounded bg-gray-700 text-white";
+          input.placeholder = `0`;
+          input.value = savedData[statKey] || "";
+
+          input.addEventListener('input', () => {
+            const currentData = loadTeamData(team.name);
+            currentData[statKey] = input.value;
+            saveTeamData(team.name, currentData);
+          });
+
+          const unitSpan = document.createElement("span");
+          unitSpan.textContent = unit;
+          unitSpan.className = "text-white";
+
+          container.appendChild(input);
+          container.appendChild(unitSpan);
+
+          card.appendChild(label);
+          card.appendChild(container);
+        });
+
+        teamStats.appendChild(card);
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>F1 Manager - Usine / R&D</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 text-black">
+  <div class="max-w-5xl mx-auto p-6">
+    <h1 class="text-3xl font-bold mb-6" id="teamTitle">Usine / R&D</h1>
+    <div class="mb-4"><strong>Budget : </strong><span id="budgetDisplay">...</span> M€</div>
+    <div class="mb-4"><strong>Nouvelle pièce en développement :</strong></div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" id="partSelector"></div>
+    <div id="improvementSection" class="mt-6 hidden">
+      <h2 class="text-xl font-bold mb-4" id="partTitle">Nouvelle Pièce</h2>
+      <div id="statsList"></div>
+      <button id="validateButton" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded">Valider la conception</button>
+    </div>
+    <div id="devStatus" class="mt-8 p-4 bg-white rounded shadow hidden"></div>
+  </div>
+
+  <script>
+    const STEP_PERCENT = 1;     // % step
+    const STEP_KN = 0.1;        // kN step
+    const COST_PER_POINT = 0.5; // M€ par point
+
+    const SECTIONS = {
+      "CHASSIS": ["Drag reduction", "Engine cooling", "Airflow middle", "DRS Delta"],
+      "FRONT WING": ["Airflow front", "Airflow sensitivity", "Tyre preservation", "Low speed downforce", "Medium speed downforce", "High speed downforce"],
+      "REAR WING": ["Airflow sensitivity", "DRS Delta", "Drag reduction", "Low speed downforce", "Medium speed downforce", "High speed downforce"],
+      "SIDEPODS": ["Airflow front", "Drag reduction", "Engine cooling", "Airflow middle"],
+      "UNDERFLOOR": ["Airflow sensitivity", "Drag reduction", "Low speed downforce", "Medium speed downforce", "High speed downforce"],
+      "SUSPENSION": ["Airflow front", "Tyre preservation", "Drag reduction", "Low speed downforce", "Medium speed downforce", "High speed downforce"]
+    };
+
+    const UNITS = {
+      "%": ["Drag reduction", "Engine cooling", "Airflow middle", "Airflow front", "Airflow sensitivity", "Tyre preservation", "DRS Delta"],
+      "kN": ["Low speed downforce", "Medium speed downforce", "High speed downforce"]
+    };
+
+    function getUnit(stat) {
+      for (const unit in UNITS) {
+        if (UNITS[unit].includes(stat)) return unit;
+      }
+      return "";
+    }
+
+    const teamName = localStorage.getItem('activeTeam');
+    if (!teamName) {
+      alert("Aucune écurie sélectionnée.");
+      window.location.href = "index.html";
+    }
+
+    const budgetKey = `budget-${teamName}`;
+    const devKey = `dev-${teamName}`;
+
+    let budget = parseFloat(localStorage.getItem(budgetKey) || "100");
+    let currentDev = JSON.parse(localStorage.getItem(devKey) || "null");
+
+    const budgetDisplay = document.getElementById('budgetDisplay');
+    const partSelector = document.getElementById('partSelector');
+    const improvementSection = document.getElementById('improvementSection');
+    const statsList = document.getElementById('statsList');
+    const validateButton = document.getElementById('validateButton');
+    const devStatus = document.getElementById('devStatus');
+    const partTitle = document.getElementById('partTitle');
+
+    function updateBudgetDisplay() {
+      budgetDisplay.textContent = budget.toFixed(2);
+    }
+
+    function saveBudget() {
+      localStorage.setItem(budgetKey, budget.toFixed(2));
+    }
+
+    function saveDevelopment() {
+      localStorage.setItem(devKey, JSON.stringify(currentDev));
+    }
+
+    function renderPartSelector() {
+      partSelector.innerHTML = "";
+      for (const section in SECTIONS) {
+        const btn = document.createElement("button");
+        btn.textContent = section;
+        btn.className = "px-4 py-2 bg-gray-300 rounded hover:bg-gray-400 font-semibold";
+        btn.onclick = () => startImprovement(section);
+        partSelector.appendChild(btn);
+      }
+    }
+
+    let selectedImprovements = {};
+
+    function startImprovement(section) {
+      if (currentDev) {
+        alert("Une pièce est déjà en développement.");
+        return;
+      }
+
+      selectedImprovements = {};
+      partTitle.textContent = `Nouvelle pièce : ${section}`;
+      improvementSection.classList.remove("hidden");
+
+      statsList.innerHTML = "";
+      SECTIONS[section].forEach(stat => {
+        const unit = getUnit(stat);
+        const key = `${section}-${stat}`;
+        selectedImprovements[key] = 0;
+
+        const row = document.createElement("div");
+        row.className = "flex justify-between items-center mb-2";
+
+        const label = document.createElement("span");
+        label.textContent = `${stat} (${unit})`;
+
+        const controls = document.createElement("div");
+        controls.className = "flex items-center gap-2";
+
+        const minus = document.createElement("button");
+        minus.textContent = "▼";
+        minus.className = "px-2 py-1 bg-red-500 text-white rounded";
+        minus.onclick = () => {
+          if (selectedImprovements[key] > 0) {
+            selectedImprovements[key] -= (unit === "%" ? STEP_PERCENT : STEP_KN);
+            value.textContent = selectedImprovements[key].toFixed(unit === "%" ? 0 : 1);
+          }
+        };
+
+        const value = document.createElement("span");
+        value.textContent = "0";
+        value.className = "w-12 text-center";
+
+        const plus = document.createElement("button");
+        plus.textContent = "▲";
+        plus.className = "px-2 py-1 bg-green-500 text-white rounded";
+        plus.onclick = () => {
+          selectedImprovements[key] += (unit === "%" ? STEP_PERCENT : STEP_KN);
+          value.textContent = selectedImprovements[key].toFixed(unit === "%" ? 0 : 1);
+        };
+
+        controls.appendChild(minus);
+        controls.appendChild(value);
+        controls.appendChild(plus);
+
+        row.appendChild(label);
+        row.appendChild(controls);
+        statsList.appendChild(row);
+      });
+
+      validateButton.onclick = () => {
+        const totalPoints = Object.values(selectedImprovements).reduce((acc, val) => {
+          const v = parseFloat(val);
+          return acc + (Number.isFinite(v) ? (v * (typeof v === "number" && v <= 1 ? 10 : 1)) : 0);
+        }, 0);
+
+        const cost = totalPoints * COST_PER_POINT;
+        if (budget < cost) {
+          alert("Budget insuffisant !");
+          return;
+        }
+
+        const gpNeeded = Math.min(8, Math.ceil(totalPoints / 3)); // 🎯 raccourci ici
+        currentDev = {
+          section: section,
+          stats: selectedImprovements,
+          gpRemaining: gpNeeded
+        };
+        budget -= cost;
+        saveBudget();
+        saveDevelopment();
+        updateUI();
+      };
+    }
+
+    function renderDevelopment() {
+      if (!currentDev) {
+        devStatus.classList.add("hidden");
+        return;
+      }
+
+      devStatus.classList.remove("hidden");
+      devStatus.innerHTML = `
+        <h2 class="text-xl font-bold mb-2">Amélioration en cours</h2>
+        <p><strong>Section :</strong> ${currentDev.section}</p>
+        <p><strong>GP restants :</strong> ${currentDev.gpRemaining}</p>
+        <ul class="mt-2 list-disc list-inside">
+          ${Object.entries(currentDev.stats).map(([key, val]) => {
+            const stat = key.split("-")[1];
+            const unit = getUnit(stat);
+            return `<li>${stat} : +${val}${unit}</li>`;
+          }).join("")}
+        </ul>
+      `;
+    }
+
+    function updateUI() {
+      updateBudgetDisplay();
+      renderPartSelector();
+      renderDevelopment();
+      improvementSection.classList.add("hidden");
+    }
+
+    updateUI();
+  </script>
+</body>
+</html>
