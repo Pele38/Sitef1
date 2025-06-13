@@ -103,6 +103,19 @@
       return data ? JSON.parse(data) : {};
     };
 
+    // 🔄 Sauvegarde distante (à ajouter sur ton serveur ou API)
+    const saveToServer = async (teamName, data) => {
+      try {
+        await fetch('https://ton-serveur.com/api/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ team: teamName, data })
+        });
+      } catch (err) {
+        console.error("Erreur lors de la sauvegarde sur le serveur :", err);
+      }
+    };
+
     const teamList = document.getElementById('teamList');
     const teamStats = document.getElementById('teamStats');
     const teamTitle = document.getElementById('teamTitle');
@@ -200,7 +213,8 @@
           const statKey = `${section} - ${label}`;
           dataToSave[statKey] = input.value;
         });
-        saveTeamData(team.name, dataToSave);
+        saveTeamData(team.name, dataToSave);          // Local
+        saveToServer(team.name, dataToSave);          // Cloud / Autre PC
         alert("Données sauvegardées !");
       });
       const wrapper = document.createElement("div");
@@ -234,7 +248,6 @@
           input.placeholder = `0`;
           input.value = savedData[statKey] || "";
 
-          // Rendre certains champs non modifiables
           if (
             (section === "REAR WING" || section === "UNDERFLOOR") &&
             (stat === "Airflow sensitivity" || stat === "DRS Delta")
