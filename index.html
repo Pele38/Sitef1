@@ -32,6 +32,18 @@
     </main>
   </div>
 
+  <!-- Modal de code d'accès -->
+  <div id="codeModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden">
+    <div class="bg-white p-6 rounded shadow-xl text-center w-80">
+      <h2 class="text-lg font-bold mb-4">Entrez le code d'accès</h2>
+      <input type="password" id="codeInput" maxlength="4" class="w-full mb-4 px-4 py-2 border rounded text-center text-xl" autofocus>
+      <div class="flex justify-end gap-2">
+        <button id="cancelCode" class="px-4 py-2 bg-gray-500 text-white rounded">Annuler</button>
+        <button id="submitCode" class="px-4 py-2 bg-blue-600 text-white rounded">Valider</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     const teams = [
       { name: "EQUIPE DE SIMU", color: "#9CA3AF", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/3/33/F1.svg/1280px-F1.svg.png" },
@@ -46,6 +58,20 @@
       { name: "HAAS", color: "#E0E0E0", logo: "https://upload.wikimedia.org/wikipedia/commons/5/54/Haas_F1_Team_Logo.svg" },
       { name: "ASTON MARTIN", color: "#005F56", logo: "https://upload.wikimedia.org/wikipedia/fr/thumb/c/c2/Logo_Aston_Martin.svg/1280px-Logo_Aston_Martin.svg.png" },
     ];
+
+    const accessCodes = {
+      "EQUIPE DE SIMU": "1111",
+      "FERRARI": "2345",
+      "VISA CASHAPP RB": "3456",
+      "MCLAREN": "4567",
+      "MERCEDES": "5678",
+      "AUDI": "6789",
+      "RED BULL RACING": "7890",
+      "ALPINE": "8901",
+      "WILLIAMS": "9012",
+      "HAAS": "1234",
+      "ASTON MARTIN": "1357"
+    };
 
     const sections = {
       "CHASSIS": ["Drag reduction", "Engine cooling", "Airflow middle", "DRS Delta"],
@@ -81,8 +107,13 @@
     const teamStats = document.getElementById('teamStats');
     const teamTitle = document.getElementById('teamTitle');
     const teamHeader = document.getElementById('teamHeader');
+    const modal = document.getElementById("codeModal");
+    const codeInput = document.getElementById("codeInput");
+    const submitCode = document.getElementById("submitCode");
+    const cancelCode = document.getElementById("cancelCode");
 
     let activeButton = null;
+    let selectedTeamIndex = null;
 
     teams.forEach((team, index) => {
       const li = document.createElement('li');
@@ -91,14 +122,35 @@
       button.className = "w-full text-left px-4 py-2 rounded hover:bg-gray-200 transition-colors duration-150";
       button.style.backgroundColor = team.color;
       button.style.color = 'white';
+
       button.addEventListener('click', () => {
         if (activeButton) activeButton.classList.remove('active-team');
         button.classList.add('active-team');
         activeButton = button;
-        showTeam(index);
+        selectedTeamIndex = index;
+        modal.classList.remove("hidden");
+        codeInput.focus();
       });
+
       li.appendChild(button);
       teamList.appendChild(li);
+    });
+
+    submitCode.addEventListener("click", () => {
+      const team = teams[selectedTeamIndex];
+      if (codeInput.value === accessCodes[team.name]) {
+        modal.classList.add("hidden");
+        codeInput.value = "";
+        showTeam(selectedTeamIndex);
+      } else {
+        alert("Code incorrect !");
+        codeInput.value = "";
+      }
+    });
+
+    cancelCode.addEventListener("click", () => {
+      modal.classList.add("hidden");
+      codeInput.value = "";
     });
 
     function showTeam(index) {
@@ -124,17 +176,15 @@
       card.appendChild(name);
       teamHeader.appendChild(card);
 
-      // --- Bouton Usine / R&D ---
       const rdButton = document.createElement("button");
       rdButton.textContent = "Usine / R&D";
       rdButton.className = "mb-6 px-4 py-2 rounded text-white font-semibold";
       rdButton.style.backgroundColor = team.color;
       rdButton.addEventListener("click", () => {
         localStorage.setItem('activeTeam', team.name);
-        window.location.href = 'conception.html';  // <-- modifié ici
+        window.location.href = 'conception.html';
       });
       teamHeader.appendChild(rdButton);
-      // ---------------------------
 
       const savedData = loadTeamData(team.name);
 
@@ -183,6 +233,15 @@
           input.className = "flex-1 px-2 py-1 rounded bg-gray-700 text-white";
           input.placeholder = `0`;
           input.value = savedData[statKey] || "";
+
+          // Rendre certains champs non modifiables
+          if (
+            (section === "REAR WING" || section === "UNDERFLOOR") &&
+            (stat === "Airflow sensitivity" || stat === "DRS Delta")
+          ) {
+            input.readOnly = true;
+            input.classList.add("opacity-50", "cursor-not-allowed");
+          }
 
           input.addEventListener('input', () => {
             const currentData = loadTeamData(team.name);
